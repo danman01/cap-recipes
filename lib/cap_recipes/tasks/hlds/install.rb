@@ -5,6 +5,8 @@ Capistrano::Configuration.instance(true).load do
   namespace :hlds do 
 
     roles[:hlds]
+    roles[:hlds_ugc]
+    roles[:hlds_event]
     set :hlds_root, "/opt/hlds"
     set(:hlds_source) {hlds_root}
     set :hlds_user, "hlds"
@@ -29,6 +31,7 @@ Capistrano::Configuration.instance(true).load do
     set :server_type_cfg, "server.cfg" # "server.cfg"
     set :hlds_mapcycle, %w(ctf_turbine pl_hoodoo ctf_2fort cp_dustbowl koth_nucleus)
     set :hlds_motd, "welcome"
+    set :hlds_server_type, "standard" # "standard" "ugc"(UGC) "event"(Holidays)
     set :hlds_config_hostname, "TF2 Server"
     set :hlds_config_sv_contact, "unset"
     set :hlds_config_sv_region, "1"  # -1 is the world, 0 is USA east coast, 1 is USA west coast 2 south america, 3 europe, 4 asia, 5 australia, 6 middle east, 7 africa
@@ -48,7 +51,7 @@ Capistrano::Configuration.instance(true).load do
       end
     }
 
-    task :install, :roles => :hlds do
+    task :install, :roles => [:hlds, :hlds_event, :hlds_ugc] do
       run "#{sudo} mkdir -p #{hlds_source} #{hlds_root}"
       utilities.addgroup "#{hlds_user};true"
       utilities.adduser "hlds" , :group => "hlds"
@@ -67,7 +70,7 @@ Capistrano::Configuration.instance(true).load do
       setup_ugc
     end
 
-    task :setup, :roles => :hlds do
+    task :setup, :roles => [:hlds, :hlds_event, :hlds_ugc] do
       utilities.sudo_upload_template hlds_init_erb, hlds_init_dest, :owner => "root:root", :mode => "700"
       utilities.sudo_upload_template hlds_steam_appid_erb, hlds_steam_appid_erb_path, :owner => "#{hlds_user}:#{hlds_user}"
       utilities.sudo_upload_template hlds_config_erb, hlds_config_server_cfg, :owner => "#{hlds_user}:#{hlds_user}"
@@ -85,13 +88,13 @@ Capistrano::Configuration.instance(true).load do
         sudo "rm #{hlds_config_root}/ugc.tar"
     end
 
-    task :update, :roles => :hlds do
+    task :update, :roles => [:hlds, :hlds_event, :hlds_ugc] do
       run "cd #{hlds_source} && #{sudo} ./steam -command update -game #{hlds_game} -dir #{hlds_root}"
       run "#{sudo} chown -R #{hlds_user}:#{hlds_user} #{hlds_root}"
     end
 
     %w(start stop restart).each do |t|
-      task t.to_sym, :roles => [:hlds, :hlds_ugc] do
+      task t.to_sym, :roles => [:hlds, :hlds_event, :hlds_ugc] do
         run "#{sudo} /etc/init.d/hlds #{t}"
       end
     end
